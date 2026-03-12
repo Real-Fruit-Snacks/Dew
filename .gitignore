@@ -1,0 +1,26 @@
+*.exe
+*.o
+*.obj
+*.map
+__pycache__/
+*.pyc
+*.pem
+
+# AI / editor artifacts
+.omc/
+.claude/
+.cursorrules
+.cursor/
+.copilot/
+.aider*
+.codeium/
+.continue/
+.windsurf/
+
+# OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Specs generated during brainstorming
+docs/superpowers/

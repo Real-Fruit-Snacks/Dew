@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dew — Encrypted HTTPS Reverse Shell</title>
+  <meta name="description" content="Tiny encrypted HTTPS reverse shell for Windows. ~37 KB C implant with XChaCha20-Poly1305 and interactive Python listener. Built for OSCP/OSEP lab work.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%92%A7%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* =========================================================
+       DEW LANDING PAGE
+       Catppuccin Mocha palette — dark terminal aesthetic
+       ========================================================= */
+
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --ctp-rosewater: #f5e0dc;
+      --ctp-flamingo: #f2cdcd;
+      --ctp-pink: #f5c2e7;
+      --ctp-mauve: #cba6f7;
+      --ctp-red: #f38ba8;
+      --ctp-maroon: #eba0ac;
+      --ctp-peach: #fab387;
+      --ctp-yellow: #f9e2af;
+      --ctp-green: #a6e3a1;
+      --ctp-teal: #94e2d5;
+      --ctp-sky: #89dceb;
+      --ctp-sapphire: #74c7ec;
+      --ctp-blue: #89b4fa;
+      --ctp-lavender: #b4befe;
+      --ctp-text: #cdd6f4;
+      --ctp-subtext1: #bac2de;
+      --ctp-subtext0: #a6adc8;
+      --ctp-overlay2: #9399b2;
+      --ctp-overlay1: #7f849c;
+      --ctp-overlay0: #6c7086;
+      --ctp-surface2: #585b70;
+      --ctp-surface1: #45475a;
+      --ctp-surface0: #313244;
+      --ctp-base: #1e1e2e;
+      --ctp-mantle: #181825;
+      --ctp-crust: #11111b;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: var(--ctp-surface1) var(--ctp-crust);
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background-color: var(--ctp-crust);
+      color: var(--ctp-text);
+      line-height: 1.7;
+      font-size: 15px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(var(--ctp-surface0) 1px, transparent 1px);
+      background-size: 24px 24px;
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.03) 2px,
+        rgba(0, 0, 0, 0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .page-wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    section { margin-bottom: 96px; }
+
+    a {
+      color: var(--ctp-blue);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    a:hover { color: var(--ctp-sapphire); }
+
+    .section-label {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--ctp-overlay0);
+      border: 1px solid var(--ctp-surface1);
+      padding: 4px 12px;
+      border-radius: 2px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 700;
+      color: var(--ctp-text);
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+
+    .section-desc {
+      color: var(--ctp-subtext0);
+      font-size: 14px;
+      max-width: 600px;
+      margin-bottom: 40px;
+    }
+
+    /* ---- HERO ---- */
+    .hero {
+      padding: 80px 0 48px;
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .hero-terminal {
+      border: 1px solid var(--ctp-surface1);
+      border-radius: 8px;
+      background: var(--ctp-mantle);
+      max-width: 780px;
+      margin: 0 auto;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px var(--ctp-surface0),
+        0 24px 80px -12px rgba(0, 0, 0, 0.6),
+        0 0 120px -40px rgba(137, 180, 250, 0.08);
+    }
+
+    .hero-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--ctp-crust);
+      border-bottom: 1px solid var(--ctp-surface0);
+    }
+
+    .hero-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .hero-dot--red { background: var(--ctp-red); }
+    .hero-dot--yellow { background: var(--ctp-yellow); }
+    .hero-dot--green { background: var(--ctp-green); }
+
+    .hero-titlebar-text {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--ctp-overlay0);
+      letter-spacing: 0.05em;
+    }
+
+    .hero-body { padding: 48px 40px 56px; }
+
+    .hero-title {
+      font-size: clamp(48px, 8vw, 80px);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      line-height: 1.05;
+      margin-bottom: 8px;
+      background: linear-gradient(
+        135deg,
+        var(--ctp-blue) 0%,
+        var(--ctp-sapphire) 30%,
+        var(--ctp-teal) 60%,
+        var(--ctp-green) 100%
+      );
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 40px rgba(137, 180, 250, 0.2));
+    }
+
+    .hero-cursor {
+      display: inline-block;
+      width: 3px;
+      height: 0.8em;
+      background: var(--ctp-green);
+      margin-left: 4px;
+      vertical-align: baseline;
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .hero-tagline {
+      font-size: clamp(14px, 2vw, 17px);
+      color: var(--ctp-subtext0);
+      margin-bottom: 36px;
+      font-weight: 400;
+      line-height: 1.6;
+    }
+
+    .hero-tagline em {
+      color: var(--ctp-subtext1);
+      font-style: normal;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--ctp-blue);
+      color: var(--ctp-crust);
+      border-color: var(--ctp-blue);
+    }
+
+    .btn-primary:hover {
+      background: var(--ctp-sapphire);
+      border-color: var(--ctp-sapphire);
+      color: var(--ctp-crust);
+      box-shadow: 0 0 24px rgba(137, 180, 250, 0.25);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--ctp-subtext1);
+      border-color: var(--ctp-surface1);
+    }
+
+    .btn-ghost:hover {
+      color: var(--ctp-text);
+      border-color: var(--ctp-overlay0);
+      background: var(--ctp-surface0);
+    }
+
+    /* ---- FEATURES GRID ---- */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--ctp-mantle);
+      border: 1px solid var(--ctp-surface0);
+      border-radius: 6px;
+      padding: 28px 24px;
+      transition: all 0.25s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--ctp-blue), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--ctp-surface1);
+      background: var(--ctp-base);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.4);
+    }
+
+    .feature-card:hover::before { opacity: 1; }
+
+    .feature-icon {
+      font-size: 24px;
+      margin-bottom: 16px;
+      display: block;
+      width: 44px;
+      height: 44px;
+      line-height: 44px;
+      text-align: center;
+      background: var(--ctp-surface0);
+      border-radius: 8px;
+      border: 1px solid var(--ctp-surface1);
+    }
+
+    .feature-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ctp-text);
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 13px;
+      color: var(--ctp-subtext0);
+      line-height: 1.6;
+    }
+
+    .feature-card:nth-child(1):hover { border-color: var(--ctp-blue); }
+    .feature-card:nth-child(1):hover::before { background: linear-gradient(90deg, transparent, var(--ctp-blue), transparent); }
+    .feature-card:nth-child(2):hover { border-color: var(--ctp-green); }
+    .feature-card:nth-child(2):hover::before { background: linear-gradient(90deg, transparent, var(--ctp-green), transparent); }
+    .feature-card:nth-child(3):hover { border-color: var(--ctp-mauve); }
+    .feature-card:nth-child(3):hover::before { background: linear-gradient(90deg, transparent, var(--ctp-mauve), transparent); }
+    .feature-card:nth-child(4):hover { border-color: var(--ctp-peach); }
+    .feature-card:nth-child(4):hover::before { background: linear-gradient(90deg, transparent, var(--ctp-peach), transparent); }
+    .feature-card:nth-child(5):hover { border-color: var(--ctp-teal); }
+    .feature-card:nth-child(5):hover::before { background: linear-gradient(90deg, transparent, var(--ctp-teal), transparent); }
+    .feature-card:nth-child(6):hover { border-color: var(--ctp-yellow); }
+    .feature-card:nth-child(6):hover::before { background: linear-gradient(90deg, transparent, var(--ctp-yellow), transparent); }
+
+    /* ---- ARCHITECTURE ---- */
+    .arch-terminal {
+      border: 1px solid var(--ctp-surface1);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--ctp-mantle);
+      box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.4);
+    }
+
+    .arch-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--ctp-crust);
+      border-bottom: 1px solid var(--ctp-surface0);
+    }
+
+    .arch-titlebar-text {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--ctp-overlay0);
+    }
+
+    .arch-body { padding: 32px; }
+
+    .arch-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+
+    .arch-item {
+      padding: 20px;
+      border: 1px solid var(--ctp-surface0);
+      border-radius: 4px;
+      background: var(--ctp-base);
+    }
+
+    .arch-item-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .arch-item-marker {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ctp-crust);
+      background: var(--ctp-blue);
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .arch-item:nth-child(2) .arch-item-marker { background: var(--ctp-green); }
+    .arch-item:nth-child(3) .arch-item-marker { background: var(--ctp-peach); }
+    .arch-item:nth-child(4) .arch-item-marker { background: var(--ctp-red); }
+
+    .arch-item h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ctp-text);
+    }
+
+    .arch-item p {
+      font-size: 13px;
+      color: var(--ctp-subtext0);
+      line-height: 1.6;
+    }
+
+    .arch-item code {
+      font-size: 12px;
+      color: var(--ctp-mauve);
+      background: var(--ctp-surface0);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    .arch-divider {
+      border: none;
+      border-top: 1px dashed var(--ctp-surface1);
+      margin: 28px 0;
+    }
+
+    .arch-stack {
+      font-size: 13px;
+      color: var(--ctp-subtext0);
+      text-align: center;
+    }
+
+    .arch-stack span {
+      display: inline-block;
+      padding: 4px 14px;
+      border: 1px solid var(--ctp-surface1);
+      border-radius: 3px;
+      margin: 4px;
+      background: var(--ctp-base);
+      color: var(--ctp-subtext1);
+      font-size: 12px;
+    }
+
+    /* ---- GETTING STARTED ---- */
+    .start-row {
+      display: flex;
+      gap: 40px;
+      align-items: flex-start;
+    }
+
+    .start-terminal {
+      border: 1px solid var(--ctp-surface1);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--ctp-mantle);
+      box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.4);
+      flex: 1;
+      min-width: 0;
+    }
+
+    .start-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--ctp-crust);
+      border-bottom: 1px solid var(--ctp-surface0);
+    }
+
+    .start-titlebar-text {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--ctp-overlay0);
+    }
+
+    .start-body { padding: 28px 32px; }
+
+    .start-line {
+      margin-bottom: 4px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .start-line .prompt { color: var(--ctp-green); user-select: none; }
+    .start-line .cmd { color: var(--ctp-text); }
+    .start-line .comment { color: var(--ctp-overlay0); }
+    .start-line .flag { color: var(--ctp-peach); }
+    .start-line .arg { color: var(--ctp-yellow); }
+
+    .start-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .start-info p {
+      font-size: 14px;
+      color: var(--ctp-subtext0);
+      margin-bottom: 12px;
+      line-height: 1.7;
+    }
+
+    .start-info code {
+      font-size: 13px;
+      color: var(--ctp-peach);
+      background: var(--ctp-surface0);
+      padding: 2px 8px;
+      border-radius: 3px;
+      border: 1px solid var(--ctp-surface1);
+    }
+
+    /* ---- FOOTER ---- */
+    .site-footer {
+      border-top: 1px solid var(--ctp-surface0);
+      padding: 48px 0;
+      text-align: center;
+      margin-top: 32px;
+    }
+
+    .footer-tagline {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ctp-subtext1);
+      margin-bottom: 24px;
+      letter-spacing: 0.02em;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: var(--ctp-overlay1);
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--ctp-blue); }
+
+    .footer-copy {
+      font-size: 12px;
+      color: var(--ctp-overlay0);
+    }
+
+    /* ---- RESPONSIVE ---- */
+    @media (max-width: 900px) {
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+      .arch-grid { grid-template-columns: 1fr; }
+      .hero-body { padding: 36px 24px 44px; }
+      .start-row { flex-direction: column; gap: 24px; }
+    }
+
+    @media (max-width: 600px) {
+      body { font-size: 14px; }
+      .page-wrap { padding: 0 16px; }
+      .features-grid { grid-template-columns: 1fr; }
+      section { margin-bottom: 64px; }
+      .hero { padding: 48px 0 32px; }
+      .hero-body { padding: 28px 20px 36px; }
+      .hero-buttons { flex-direction: column; align-items: center; }
+      .btn { width: 100%; max-width: 260px; justify-content: center; }
+      .arch-body { padding: 20px; }
+      .start-body { padding: 20px; }
+      .start-line { font-size: 12px; }
+      .feature-card { padding: 22px 20px; }
+    }
+
+    ::selection {
+      background: rgba(137, 180, 250, 0.25);
+      color: var(--ctp-text);
+    }
+
+    a:focus-visible,
+    .btn:focus-visible {
+      outline: 2px solid var(--ctp-blue);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top">
+    <div class="hero-terminal">
+      <div class="hero-titlebar">
+        <span class="hero-dot hero-dot--red"></span>
+        <span class="hero-dot hero-dot--yellow"></span>
+        <span class="hero-dot hero-dot--green"></span>
+        <span class="hero-titlebar-text">dew -- reverse shell</span>
+      </div>
+      <div class="hero-body">
+        <h1 class="hero-title">Dew<span class="hero-cursor" aria-hidden="true"></span></h1>
+        <p class="hero-tagline">
+          <em>XChaCha20-Poly1305</em> encrypted reverse shell for Windows<br>
+          ~37 KB implant with interactive Python listener
+        </p>
+        <div class="hero-buttons">
+          <a href="#getting-started" class="btn btn-primary">Get Started</a>
+          <a href="https://github.com/Real-Fruit-Snacks/Dew" class="btn btn-ghost">View on GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section id="features">
+    <span class="section-label">// capabilities</span>
+    <h2 class="section-title">Small footprint. Strong crypto.</h2>
+    <p class="section-desc">
+      A minimal encrypted reverse shell that layers XChaCha20-Poly1305 over HTTPS, uses cryptographic jitter, and fits in ~37 KB.
+    </p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#128274;</span>
+        <h3>Double Encryption</h3>
+        <p>HTTPS via WinHTTP for transport, plus XChaCha20-Poly1305 AEAD for command payloads. Defense-in-depth with self-signed cert support.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#128273;</span>
+        <h3>Monocypher Crypto</h3>
+        <p>Minimal extraction of Monocypher (~370 lines). XChaCha20-Poly1305 with 24-byte random nonces. No nonce management headaches.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#128336;</span>
+        <h3>Jittered Callbacks</h3>
+        <p>Centered jitter via RtlGenRandom. Sleeps between 70-130% of base interval. No predictable beacon pattern for defenders to fingerprint.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#9881;</span>
+        <h3>Command Execution</h3>
+        <p>CreateProcess with piped stdout/stderr. 64 KB output cap with truncation notification. Remote EXIT for clean shutdown.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#9889;</span>
+        <h3>37 KB Binary</h3>
+        <p>Stripped and size-optimized with -Os -s. No runtime dependencies beyond Windows system DLLs. Cross-compiled from Kali with MinGW.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#128268;</span>
+        <h3>Resilient Loop</h3>
+        <p>Network errors, bad responses, and decryption failures handled silently. The implant keeps polling until you tell it to stop.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ARCHITECTURE ============ -->
+  <section id="architecture">
+    <span class="section-label">// architecture</span>
+    <h2 class="section-title">Two components. One encrypted channel.</h2>
+    <p class="section-desc">
+      A C implant that polls over HTTPS and a Python listener that queues commands and decrypts results.
+    </p>
+
+    <div class="arch-terminal">
+      <div class="arch-titlebar">
+        <span class="hero-dot hero-dot--red"></span>
+        <span class="hero-dot hero-dot--yellow"></span>
+        <span class="hero-dot hero-dot--green"></span>
+        <span class="arch-titlebar-text">system architecture</span>
+      </div>
+      <div class="arch-body">
+        <div class="arch-grid">
+          <div class="arch-item">
+            <div class="arch-item-header">
+              <span class="arch-item-marker">01</span>
+              <h3>WinHTTP Transport</h3>
+            </div>
+            <p>
+              Native Windows TLS via <code>WinHttpOpen</code> / <code>WinHttpSendRequest</code>. Proxy-aware. Self-signed cert bypass for lab use.
+            </p>
+          </div>
+
+          <div class="arch-item">
+            <div class="arch-item-header">
+              <span class="arch-item-marker">02</span>
+              <h3>XChaCha20-Poly1305</h3>
+            </div>
+            <p>
+              AEAD encryption via Monocypher. Wire format: <code>[nonce(24)][mac(16)][ct]</code>. Fresh random nonce per message.
+            </p>
+          </div>
+
+          <div class="arch-item">
+            <div class="arch-item-header">
+              <span class="arch-item-marker">03</span>
+              <h3>Python Listener</h3>
+            </div>
+            <p>
+              HTTPS server with interactive prompt. Thread-safe command queue. PyNaCl for matching XChaCha20-Poly1305 decrypt/encrypt.
+            </p>
+          </div>
+
+          <div class="arch-item">
+            <div class="arch-item-header">
+              <span class="arch-item-marker">04</span>
+              <h3>Beacon Protocol</h3>
+            </div>
+            <p>
+              <code>POST /poll</code> with encrypted beacon ID. <code>POST /result</code> with encrypted output. 200 = command, 204 = sleep.
+            </p>
+          </div>
+        </div>
+
+        <hr class="arch-divider">
+
+        <div class="arch-stack">
+          <span>C (MinGW)</span>
+          <span>WinHTTP</span>
+          <span>Monocypher</span>
+          <span>Python</span>
+          <span>PyNaCl</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GETTING STARTED ============ -->
+  <section id="getting-started">
+    <span class="section-label">// quickstart</span>
+    <h2 class="section-title">Deployed in 30 seconds</h2>
+    <p class="section-desc">
+      Generate a key, build the implant, start the listener, deploy. No Docker, no frameworks.
+    </p>
+
+    <div class="start-row">
+      <div class="start-terminal">
+        <div class="start-titlebar">
+          <span class="hero-dot hero-dot--red"></span>
+          <span class="hero-dot hero-dot--yellow"></span>
+          <span class="hero-dot hero-dot--green"></span>
+          <span class="start-titlebar-text">bash</span>
+        </div>
+        <div class="start-body">
+          <div class="start-line">
+            <span class="comment"># Generate a shared key</span>
+          </div>
+          <div class="start-line" style="margin-bottom:16px;">
+            <span class="prompt">$</span> <span class="cmd">KEY=</span><span class="arg">$(python3 -c "import secrets; print(secrets.token_hex(32))")</span>
+          </div>
+          <div class="start-line">
+            <span class="comment"># Build the implant</span>
+          </div>
+          <div class="start-line" style="margin-bottom:16px;">
+            <span class="prompt">$</span> <span class="cmd">make</span> <span class="flag">LHOST=</span><span class="arg">10.10.14.5</span> <span class="flag">LPORT=</span><span class="arg">443</span> <span class="flag">KEY=</span><span class="arg">$KEY</span>
+          </div>
+          <div class="start-line">
+            <span class="comment"># Start the listener</span>
+          </div>
+          <div class="start-line" style="margin-bottom:16px;">
+            <span class="prompt">$</span> <span class="cmd">python3 listener.py</span> <span class="flag">--lhost</span> <span class="arg">0.0.0.0</span> <span class="flag">--lport</span> <span class="arg">443</span> <span class="flag">--key</span> <span class="arg">$KEY</span>
+          </div>
+          <div class="start-line">
+            <span class="comment"># Deploy dew.exe to target</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="start-info">
+        <p>
+          The Makefile patches callback host, port, and pre-shared key at compile time. One command builds a ready-to-deploy <code>dew.exe</code>.
+        </p>
+        <p>
+          The listener auto-generates a <strong style="color:var(--ctp-text);">self-signed TLS certificate</strong> on first launch. All traffic is encrypted end-to-end: TLS for transport, XChaCha20-Poly1305 for payloads.
+        </p>
+        <p>
+          Requires <code>mingw-w64</code> for compilation. Python 3 with <code>PyNaCl</code> for the listener.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer">
+    <p class="footer-tagline">Built for labs. Designed to be tiny.</p>
+    <nav class="footer-links" aria-label="Footer links">
+      <a href="https://github.com/Real-Fruit-Snacks/Dew">GitHub</a>
+      <a href="https://github.com/Real-Fruit-Snacks/Dew/issues">Report Issue</a>
+    </nav>
+    <p class="footer-copy">dew -- encrypted HTTPS reverse shell</p>
+  </footer>
+
+</div>
+
+</body>
+</html>
