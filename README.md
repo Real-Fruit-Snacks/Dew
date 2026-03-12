@@ -6,10 +6,6 @@
 
 Dew is an encrypted HTTPS reverse shell for Windows. A tiny C implant (~37 KB) polls a Python listener over TLS, with XChaCha20-Poly1305 encrypted command payloads, jittered callbacks, and a pre-shared key for defense-in-depth beyond the transport layer.
 
-<br>
-
-Built for OSCP/OSEP lab work and red team practice.
-
 </div>
 
 <br>
